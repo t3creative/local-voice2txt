@@ -1,0 +1,16 @@
+# Desktop dictation (v2t.py)
+pyaudio
+pynput
+pillow
+pystray
+
+# Mobile API servers
+flask
+flask-cors
+
+# HTTPS cert generation (v2t_mobile_server_https.py)
+cryptography
+
+# Optional: faster clipboard on Windows (v2t.py)
+# pywin32
+# pyperclip

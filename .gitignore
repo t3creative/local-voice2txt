@@ -2,7 +2,12 @@ docs/
 .venv/
 .cursor/
 
-CLAUDE.md
+__pycache__/
+*.py[cod]
+
+# Local HTTPS material (do not commit)
+voice2text.crt
+voice2text.key
 
 *.ahk
 *.exe

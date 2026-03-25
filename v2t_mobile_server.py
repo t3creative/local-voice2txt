@@ -11,17 +11,17 @@ Features:
 - Cross-platform compatibility
 """
 
-import os
 import time
 import wave
 import tempfile
 import subprocess
 from pathlib import Path
 import base64
-import io
 
 from flask import Flask, request, jsonify, render_template_string
 from flask_cors import CORS
+
+import whisper_runner
 
 class Voice2TextMobileServer:
     """Mobile-optimized API server for remote dictation processing."""
@@ -61,15 +61,16 @@ class Voice2TextMobileServer:
                 
                 # Decode base64 audio data
                 audio_data = base64.b64decode(request.json['audio'])
-                
-                # Process audio through whisper.cpp
+
+                t0 = time.perf_counter()
                 transcription = self.process_mobile_audio(audio_data)
-                
+                elapsed = time.perf_counter() - t0
+
                 if transcription:
                     return jsonify({
                         'success': True,
                         'transcription': transcription,
-                        'processing_time': f"{time.time():.2f}s"
+                        'processing_time': f"{elapsed:.2f}s",
                     })
                 else:
                     return jsonify({
@@ -95,7 +96,6 @@ class Voice2TextMobileServer:
     
     def process_mobile_audio(self, audio_data):
         """Process mobile-captured audio through whisper.cpp pipeline."""
-        import time
         timestamp = int(time.time() * 1000)  # Use milliseconds for uniqueness
         
         # Detect format and use appropriate extension from start
@@ -161,26 +161,17 @@ class Voice2TextMobileServer:
                 process_file = temp_input_path
             
             print(f"🔄 Processing audio with whisper.cpp...")
-            
-            # Execute whisper.cpp transcription
-            cmd = [
-                str(self.whisper_path),
-                "-m", str(self.model_path),
-                "-f", str(process_file),
-                "-t", "8",
-                "--no-timestamps"
-            ]
-            
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
+
+            result = whisper_runner.run_whisper_cli(
+                self.whisper_path,
+                self.model_path,
+                process_file,
+                threads=8,
                 timeout=30,
-                cwd=self.whisper_path.parent
             )
-            
+
             if result.returncode == 0:
-                transcription = self.extract_transcription(result.stdout)
+                transcription = whisper_runner.extract_transcription(result.stdout)
                 print(f"✅ Mobile transcription: '{transcription}'")
                 return transcription.strip()
             else:
@@ -193,7 +184,6 @@ class Voice2TextMobileServer:
             return None
         finally:
             # Cleanup temporary files safely
-            import time
             time.sleep(0.1)  # Brief pause to ensure files are released
             
             for temp_file in [temp_input_path, temp_wav_path]:
@@ -216,26 +206,7 @@ class Voice2TextMobileServer:
             return 'wav'
         # Default assumption
         return 'webm'
-    
-    def extract_transcription(self, whisper_output):
-        """Extract clean transcription from whisper.cpp output."""
-        lines = whisper_output.strip().split('\n')
-        transcription_lines = []
-        
-        for line in lines:
-            if any(skip in line.lower() for skip in [
-                'whisper_', 'system_info', 'main:', 'load time', 'mel time'
-            ]):
-                continue
-            
-            if line.strip() and not line.startswith('['):
-                transcription_lines.append(line.strip())
-        
-        transcription = ' '.join(transcription_lines)
-        transcription = transcription.replace('[BLANK_AUDIO]', '').strip()
-        
-        return transcription
-    
+
     def run_server(self, host='0.0.0.0', port=5000, debug=False, ssl_context=None):
         """Launch mobile API server with optional HTTPS support."""
         protocol = "https" if ssl_context else "http"

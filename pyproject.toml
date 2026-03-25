@@ -1,0 +1,13 @@
+[tool.pyright]
+# Use project venv so third-party imports (Pillow/PIL, pystray, etc.) resolve.
+venvPath = "."
+venv = ".venv"
+# PyAudio is a C extension (no .py source); Pyright would otherwise warn
+# "could not be resolved from source" even when the wheel is installed.
+reportMissingModuleSource = "none"
+
+[tool.basedpyright]
+venvPath = "."
+venv = ".venv"
+# Same setting for Cursor's basedpyright (see docs.basedpyright.com)
+reportMissingModuleSource = "none"
